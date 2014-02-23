@@ -74,10 +74,6 @@ public class NotificationChannelSubscription {
 
 	public String formatText() {
 		return "{\"notificationChannel\": {" + 
-					"\"channelData\": { " +
-										"\"maxNotifications\": " + this.maxNotifications +
-										"}," + 
-					"\"channelLifetime\": " + this.channelLifetime + "," +
 					"\"channelType\": \"" + this.type + "\"" +
 					"}" + 
 			"}";

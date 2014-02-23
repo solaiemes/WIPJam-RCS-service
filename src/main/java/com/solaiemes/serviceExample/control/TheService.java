@@ -17,15 +17,15 @@ public class TheService {
 	private AsyncHttpClient theNotificationsHttpClient;
 	
 	
-	private boolean setUpTheService(String username, String basicAuthenticationHeader) {
+	private boolean setUpTheService(String identity, String basicAuthenticationHeader) {
 		
 		// Create the notification channel and subscriptions (for register and chat related notifications, eg: file-transfer notifications are not relevant at the moment)
-		if (ServiceExampleActions.createChannelAndSubscriptions(username, basicAuthenticationHeader)) {
-			log.info("OK - Notification channel and subscriptions created correctly for user: " + username);
+		if (ServiceExampleActions.createChannelAndSubscriptions(identity, basicAuthenticationHeader)) {
+			log.info("OK - Notification channel and subscriptions created correctly for user: " + identity);
 		} else {
-			log.error("FAIL - Notification channel and subscriptions failed to be created for user: " + username);
-			if(ServiceExampleActions.unregister(username, basicAuthenticationHeader)) {
-				log.info("OK - Unregister ok as user " + username);
+			log.error("FAIL - Notification channel and subscriptions failed to be created for user: " + identity);
+			if(ServiceExampleActions.unregister(identity, basicAuthenticationHeader)) {
+				log.info("OK - Unregister ok as identity " + identity);
 			} else {
 				log.error("FAIL - Unregister service fail.");
 				return false;
@@ -33,8 +33,8 @@ public class TheService {
 		}
 		
 		// Register your service on the RCS core
-		if(ServiceExampleActions.register(username, basicAuthenticationHeader)) {
-			log.info("OK - Register ok as user " + username);
+		if(ServiceExampleActions.register(identity, basicAuthenticationHeader)) {
+			log.info("OK - Register ok as identity " + identity);
 		} else {
 			log.error("FAIL - Register fail...");
 			return false;
@@ -43,7 +43,7 @@ public class TheService {
 		theNotificationsHttpClient = HttpClientProvider.createAsyncClient();
 
 		// This class serves both as launcher of the service and as service itself, that will run on a separate thread
-		ServiceExample receiver = new ServiceExample(username, basicAuthenticationHeader, theNotificationsHttpClient);
+		ServiceExample receiver = new ServiceExample(identity, basicAuthenticationHeader, theNotificationsHttpClient);
 		notificationRequester = new Thread(receiver);
 		notificationRequester.start();
 		
@@ -70,9 +70,9 @@ public class TheService {
 	}
 
 	
-	public String start(final String username, final String basicAuthenticationHeader) {
+	public String start(final String identity, final String basicAuthenticationHeader) {
 		try {
-			if (setUpTheService(username, basicAuthenticationHeader)) {
+			if (setUpTheService(identity, basicAuthenticationHeader)) {
 				log.info("OK - The service was re-launched...");
 				return "Service already started";
 			} else {

@@ -1,6 +1,7 @@
 package com.solaiemes.serviceExample;
 
 import java.io.IOException;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.logging.Log;
@@ -36,8 +37,15 @@ public class ServiceExample implements Runnable {
 
 	public void run() {
 		
-		notificationRequester = this.asynchttpclient.preparePost(HttpResources.getNotifierBaseHost() + HttpResources.getNotificationResource(username))
-													.addHeader("Authorization", basicAuthenticationHeader);
+		notificationRequester = this.asynchttpclient.preparePost(HttpResources.getLongPollingURL())
+													.addHeader("Authorization", basicAuthenticationHeader)
+													.addHeader("Content-Type", "application/json")
+													.addHeader("Accept", "application/json")
+													.addHeader("Accept-Language", "en-US,en;q=0.5")
+													.addHeader("DNT", "1")
+													.addHeader("Connection", "keep-alive")
+													.addHeader("Pragma", "no-cache")
+													.addHeader("Cache-Control", "no-cache");
 		
 		try {
 			
@@ -45,6 +53,7 @@ public class ServiceExample implements Runnable {
 				
 				@Override
 				public Response onCompleted(Response response) throws Exception {
+					
 					final String jsonResponse = new String(response.getResponseBodyAsBytes(), "UTF-8");
 					//Is not an empty response?
 					if (jsonResponse.length() == 0) {
@@ -52,7 +61,7 @@ public class ServiceExample implements Runnable {
 						return null;
 					}
 					
-					//Is a json response?
+					// Is a json response?
 					if (response.getContentType() == null || !response.getContentType().contains("application/json")) {
 						log.error("FAIL - ERROR: non-json response received: "  +  response.getResponseBody());
 						Thread.sleep(TIME_BETWEEN_REQUESTS);
@@ -61,7 +70,7 @@ public class ServiceExample implements Runnable {
 					}
 
 					// Getting the notification
-					try{
+					try {
 						SimpleMessageNotification[] messageMotifications = SimpleNotificationParser.parse(jsonResponse);
 						for(int i = 0; i < messageMotifications.length; i++) {
 							// If it is a brand new chat, first accepting
@@ -74,7 +83,7 @@ public class ServiceExample implements Runnable {
 							}
 							log.info("OK - Notification received: "  +  messageMotifications[i].getText());
 						}
-					}catch(Exception e) {
+					} catch(Exception e) {
 						log.info("FAIL - Exception parsing received notifications.");
 						e.printStackTrace();
 					}
@@ -84,18 +93,19 @@ public class ServiceExample implements Runnable {
 
 				@Override
 				public void onThrowable(Throwable t) {
-					t.printStackTrace();
-					log.error("FAIL - ERROR: run - onThrowable: " + t.getCause());
+					
+					if (!(t instanceof TimeoutException)) {
+						t.printStackTrace();
+					} else {
+						log.info("TIMEOUT - No notification arrived so far, re-requesting...");
+					}
 					// On errors continue receiving notifications
 					try {
-						if(t != null)
-							if (t.getCause().toString().contains("Connection")) {
-							log.error("FAIL - Connection Issues. Sleeping " + 5000);
-							Thread.sleep(1000);
-						}
 						notificationRequester.execute(this);
 					} catch (Exception e) {
 						log.error("FAIL - Could not issue the HTTP request...");
+						log.error("FAIL - Unregistering service...");
+						ServiceExampleActions.unregister(username, basicAuthenticationHeader);
 						e.printStackTrace();
 					} 
 				}		

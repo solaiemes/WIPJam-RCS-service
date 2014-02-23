@@ -55,9 +55,7 @@ public class SimpleNotificationParser {
 									String remoteParty = node.get("senderAddress").getTextValue();
 									log.info("OK - Received message: "	+ message + " from " + remoteParty);
 									SimpleMessageNotification newMsgNot = new SimpleMessageNotification(message, remoteParty, false, null);
-									
 									notifs.add(newMsgNot);
-									
 								} else if (node.has("chatSessionInvitationNotification")) {
 									// Coming on the (SIP) message
 									JsonNode theMessageNotification = node.get("chatSessionInvitationNotification");
@@ -71,7 +69,7 @@ public class SimpleNotificationParser {
 									String theSessionEvent = sessionEventNotification.get("event").getTextValue();
 									if ("unregisterSuccess".equals(theSessionEvent)) {
 										ServiceExample.setUnregisterNotificationArrived(true);
-									} else { // It should be just register on this point now
+									} else { // It should be just unregistered at this point now
 										ServiceExample.setUnregisterNotificationArrived(false);
 									}
 								}

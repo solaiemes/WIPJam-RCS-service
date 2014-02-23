@@ -28,7 +28,7 @@ public class ServiceExampleActions {
 	
 //	protected static String NOTIFICATION_LOCATION = "http://api.oneapi-gw.gsma.com/cometoma/rcsbox-notifieroma/NotificationsCometHandler?username=";
 	protected static final AsyncHttpClient asynSenderclient = HttpClientProvider.createAsyncClient();	
-	private static String notificationChannelURL;
+	private static final int WAIT_TIME_FOR_NOTIFICATIONS = 21000;
 	
 
 	public static void sendIMAutomaticSession(String username, String basicAuthenticationHeader, String destUri, String message) {
@@ -70,7 +70,15 @@ public class ServiceExampleActions {
 	public static boolean register(String username, String basicAuthenticationHeader) {
 		try{				
 			BoundRequestBuilder reqBregister = asynSenderclient.preparePost(HttpResources.getBaseHost() + HttpResources.getRegisterResource(username))
-															   .addHeader("Authorization", basicAuthenticationHeader);
+															   .addHeader("Authorization", basicAuthenticationHeader)
+															   .addHeader("Content-Type", "application/json")
+															   .addHeader("Accept", "application/json")
+															   .addHeader("Accept-Language", "en-US,en;q=0.5")
+															   .addHeader("DNT", "1")
+															   .addHeader("Connection", "keep-alive")
+															   .addHeader("Pragma", "no-cache")
+															   .addHeader("Cache-Control", "no-cache");
+			
 			String registerNotification;
 			// -- Sync response management, no other thing can be done before this step is completed
 			Response response = reqBregister.execute().get();
@@ -86,7 +94,7 @@ public class ServiceExampleActions {
 					}
 				}
 			}
-		}catch(Exception e) {
+		} catch(Exception e) {
 			log.error("FAIL - REGISTER ERROR: username=" + username + ", cause: " + e.getCause());
 		}
 		return false;
@@ -95,11 +103,18 @@ public class ServiceExampleActions {
 	
 	private static String requestRegisterNotification(String username, String basicAuthenticationHeader) {
 		
-		BoundRequestBuilder reqBregister = asynSenderclient.preparePost(HttpResources.getNotifierBaseHost() + HttpResources.getNotificationResource(username))
-														   .addHeader("Authorization", basicAuthenticationHeader);
+		BoundRequestBuilder reqBregister = asynSenderclient.preparePost(HttpResources.getLongPollingURL())
+														   .addHeader("Authorization", basicAuthenticationHeader)
+														   .addHeader("Content-Type", "application/json")
+														   .addHeader("Accept", "application/json")
+														   .addHeader("Accept-Language", "en-US,en;q=0.5")
+														   .addHeader("DNT", "1")
+														   .addHeader("Connection", "keep-alive")
+														   .addHeader("Pragma", "no-cache")
+														   .addHeader("Cache-Control", "no-cache");
+		
 		// -- Sync response management, no other thing can be done before this step is completed
 		try {
-			
 			Response response = reqBregister.execute().get();
 			if (response.getStatusCode() != 200) {
 				log.error("FAIL - Bad response to the notification request: " + response.getStatusCode() + " checking if it already came...");
@@ -132,7 +147,7 @@ public class ServiceExampleActions {
 					return true;
 				} else { // The only possibility is that it was caught on the very last notification request
 					log.info("OK - Waiting for the unregister notification to come...");
-					Thread.sleep(21000);
+					Thread.sleep(WAIT_TIME_FOR_NOTIFICATIONS);
 					return ServiceExample.isUnregisterNotificationArrived();
 				}
 			}
@@ -145,36 +160,60 @@ public class ServiceExampleActions {
 	
 	public static boolean createChannelAndSubscriptions(String username, String basicAuthenticationHeader) {
 		
+		String responseBodyAsString;
+		
 		try{			
 			
 			// Channel creation
 			BoundRequestBuilder reqSubscribe = asynSenderclient.preparePost(HttpResources.getBaseHost() + HttpResources.getNotificationChannelResource(username))
-															   .addHeader("Authorization", basicAuthenticationHeader);
+															   .addHeader("Authorization", basicAuthenticationHeader)
+															   .addHeader("Content-Type", "application/json")
+															   .addHeader("Accept", "application/json")
+															   .addHeader("Accept-Language", "en-US,en;q=0.5")
+															   .addHeader("DNT", "1")
+															   .addHeader("Connection", "keep-alive")
+															   .addHeader("Pragma", "no-cache")
+															   .addHeader("Cache-Control", "no-cache");
 			
 			NotificationChannelSubscription ncs = new NotificationChannelSubscription("12345","myService", 50, "LongPolling", 3600);
 			
 			reqSubscribe.setBody(ncs.getText());
 			
 			// -- Sync response management, no other thing can be done before this step is completed
-			Response response = reqSubscribe.execute().get();
-			notificationChannelURL = getChannelURL(response.getResponseBody());
-			if ((!HttpErrorCodeEvaluator.isChannelCorrectlyCreated(response.getStatusCode())) || (notificationChannelURL == null)) {
+			Response response = reqSubscribe.execute().get();		
+			responseBodyAsString = response.getResponseBody();
+			
+			// -- Get the relevant URLs to work with 
+			HttpResources.setChannelURL(extractChannelURL(responseBodyAsString));
+			HttpResources.setLongPollingURL(extractChannelURL(responseBodyAsString));
+			HttpResources.setNotifyURL(extractNotifyURL(responseBodyAsString));
+			
+			if ((!HttpErrorCodeEvaluator.isChannelCorrectlyCreated(response.getStatusCode())) || 
+				(HttpResources.getLongPollingURL() == null)) {
+				
 				log.error("FAIL - Channel not created " + response.getStatusCode());
 				return false;
+				
 			} else {
 				log.info("OK - Channel correctly created, HTTP " + response.getStatusCode());
 			}
 			
-			
-			NotificationSubscription ns = new NotificationSubscription("sessionSubscription", "sessionSubscription", notificationChannelURL, 3600);
-			
+			NotificationSubscription ns = new NotificationSubscription("sessionSubscription", "sessionSubscription", HttpResources.getNotifyURL(), 3600);
 			
 			// Subscription creation
 			// -- Sync response management, no other thing can be done before this step is completed
 			
 			// Session subscription
 			reqSubscribe = asynSenderclient.preparePost(HttpResources.getBaseHost() + HttpResources.getSubscriptionsResource(username, "register"))
-										   .addHeader("Authorization", basicAuthenticationHeader);
+										   .addHeader("Authorization", basicAuthenticationHeader)
+										   .addHeader("Content-Type", "application/json")
+										   .addHeader("Accept", "application/json")
+										   .addHeader("Accept-Language", "en-US,en;q=0.5")
+										   .addHeader("DNT", "1")
+										   .addHeader("Connection", "keep-alive")
+										   .addHeader("Pragma", "no-cache")
+										   .addHeader("Cache-Control", "no-cache");
+			
 			reqSubscribe.setBody(ns.getText());
 			response = reqSubscribe.execute().get();
 			if(!HttpErrorCodeEvaluator.isSessionSubscribeCorrect(response.getStatusCode())) {
@@ -185,9 +224,17 @@ public class ServiceExampleActions {
 			}
 			
 			// Chat subscription
-			ns = new NotificationSubscription("chatNotificationSubscription", "chatSubscription1", notificationChannelURL, 3600);
+			ns = new NotificationSubscription("chatNotificationSubscription", "chatSubscription1", HttpResources.getNotifyURL(), 3600);
 			reqSubscribe = asynSenderclient.preparePost(HttpResources.getBaseHost() + HttpResources.getSubscriptionsResource(username, "chat"))
-										   .addHeader("Authorization", basicAuthenticationHeader);
+										   .addHeader("Authorization", basicAuthenticationHeader)
+										   .addHeader("Content-Type", "application/json")
+										   .addHeader("Accept", "application/json")
+										   .addHeader("Accept-Language", "en-US,en;q=0.5")
+										   .addHeader("DNT", "1")
+										   .addHeader("Connection", "keep-alive")
+										   .addHeader("Pragma", "no-cache")
+										   .addHeader("Cache-Control", "no-cache");
+			
 			reqSubscribe.setBody(ns.getText());
 			response = reqSubscribe.execute().get();
 			if(!HttpErrorCodeEvaluator.isChatSubscribeCorrect(response.getStatusCode())) {
@@ -205,10 +252,40 @@ public class ServiceExampleActions {
 	}
 	
 	
+	private static String extractNotifyURL(String responseBodyAsString) {
+		
+		try {
+			ObjectMapper mapper = new ObjectMapper();
+			JsonFactory f = mapper.getJsonFactory();
+			JsonParser jp = f.createJsonParser(responseBodyAsString);
+			JsonToken current = jp.nextToken(); 
+
+			if (current != JsonToken.START_OBJECT) {
+				throw new IllegalStateException("FAIL - Error: root should be an object: quiting.");
+			}
+			
+			JsonNode node = mapper.readTree(jp);
+			if (node.has("notificationChannel")) {
+				node = node.get("notificationChannel");
+				if (node.has("callbackURL")) {
+					return node.get("callbackURL").getTextValue();
+				}
+			}
+
+			jp.close(); 
+		} catch (IOException e) {
+			throw new IllegalStateException("FAIL - Error parsing the body, is a JSON?");
+		} 
+		
+		return null;
+		
+		
+	}
+
+
 	public static void acceptInvite(String theURL, String username, String basicAuthenticationHeader, String remoteParty, String text) {
 		
-		BoundRequestBuilder chatAcceptance = asynSenderclient.preparePut(theURL)
-															 .addHeader("Authorization", basicAuthenticationHeader);
+		BoundRequestBuilder chatAcceptance = asynSenderclient.preparePut(theURL).addHeader("Authorization", basicAuthenticationHeader);
 		chatAcceptance.setBody(getAcceptanceBody());
 		
 		// -- Async response management, once the message is sent you can keep working, no need to wait for the response from the API
@@ -242,7 +319,7 @@ public class ServiceExampleActions {
 	}
 
 
-	private static String getChannelURL(String responseBody) {
+	private static String extractChannelURL(String responseBody) {
 
 		try {
 			ObjectMapper mapper = new ObjectMapper();
@@ -259,10 +336,11 @@ public class ServiceExampleActions {
 				node = node.get("notificationChannel");
 				if (node.has("channelData")) {
 					node = node.get("channelData");
-					if (node.has("channelURL")) {
-						return node.get("channelURL").getTextValue();
+					if (node.has("type")) {
+						if (node.has("type")) {
+							return node.get("channelURL").getTextValue();
+						}
 					}
-					
 				}
 			}
 
@@ -272,6 +350,8 @@ public class ServiceExampleActions {
 		} 
 		
 		return null;
+		
 	}
+	
 	
 }

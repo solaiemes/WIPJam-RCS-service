@@ -10,15 +10,15 @@ public class ServiceControl implements ServiceControlMBean {
 	
 	private static Object theServiceLock = new Object();
 	private static TheService theService = null;
-	private static String username = null;
+	private static String identity = null;
 	private static String basicAuthenticationHeader = null;
 	
 	public static String getUsername() {
-		return username;
+		return identity;
 	}
 
 	public void setUsername(String username) {
-		ServiceControl.username = username;
+		ServiceControl.identity = username;
 	}
 	
 	public String getBasicAuthenticationHeader() {
@@ -31,7 +31,7 @@ public class ServiceControl implements ServiceControlMBean {
 	
 	public String stopService() {
 		log.info("OK - Service will stop");
-		return theService.shutdown(username, basicAuthenticationHeader);
+		return theService.shutdown(identity, basicAuthenticationHeader);
 	}
 	
 	public String startService() {
@@ -40,7 +40,7 @@ public class ServiceControl implements ServiceControlMBean {
 				theService = new TheService();
 			}
 			log.info("OK - Service will start");
-			return theService.start(username, basicAuthenticationHeader);
+			return theService.start(identity, basicAuthenticationHeader);
 		}
 	}
 

@@ -44,7 +44,6 @@ public class NotificationSubscription {
 		this.duration = duration;
 		this.text = "{\"" + notificationType + "\": {" + 
 									"\"callbackReference\": { " +
-									"\"callbackData\": \"" + callbackData + "\"," +
 									"\"notifyURL\": \"" + notifyURL + "\"" +
 									"}," + 
 							"\"duration\": " + duration +
